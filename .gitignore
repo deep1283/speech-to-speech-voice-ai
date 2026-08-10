@@ -36,6 +36,11 @@ yarn-error.log*
 # vercel
 .vercel
 
+# python & local scratch
+.venv
+.moshi-official-client
+start_moshi_server.py
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
