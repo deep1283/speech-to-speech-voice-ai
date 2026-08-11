@@ -27,7 +27,9 @@ const AudioVisualizer = dynamic(
 function MoshiVoiceClientInner() {
   // Application Configuration
   const [config, setConfig] = useState<AppConfig>({
-    wsUrl: 'ws://localhost:8998/api/chat',
+    // Use the loopback IP instead of `localhost`: browsers may attach large
+    // localhost cookie headers that exceed Moshi's aiohttp header limit.
+    wsUrl: 'ws://127.0.0.1:8998/api/chat',
     sampleRate: 24000,
     format: 'int16',
     talkMode: 'continuous',
@@ -60,6 +62,13 @@ function MoshiVoiceClientInner() {
   useEffect(() => {
     isMicMutedRef.current = isMicMuted;
   }, [isMicMuted]);
+
+  // Do not allow Moshi's own output to become its next microphone input. This
+  // is especially important on devices where hardware AEC is unavailable.
+  const isAISpeakingRef = useRef(isAISpeaking);
+  useEffect(() => {
+    isAISpeakingRef.current = isAISpeaking;
+  }, [isAISpeaking]);
 
   // Analyser nodes for visualizer
   const [micAnalyser, setMicAnalyser] = useState<AnalyserNode | null>(null);
@@ -116,8 +125,10 @@ function MoshiVoiceClientInner() {
           }
         },
         onSpeakingStateChange: (speaking) => {
+          isAISpeakingRef.current = speaking;
           setIsAISpeaking(speaking);
         },
+        shouldSuppressMicrophone: () => isAISpeakingRef.current,
         onError: (err) => {
           showError(`Audio Engine Error: ${err.message}`);
         },
@@ -169,12 +180,17 @@ function MoshiVoiceClientInner() {
       // Connect WebSocket
       moshiClientRef.current?.connect();
 
-      // Start mic in continuous mode after brief delay for connection
-      if (config.talkMode === 'continuous') {
-        setTimeout(() => startMicrophone(), 500);
-      }
     }
-  }, [connectionState, config.talkMode, stopMicrophone, getAudioManager, startMicrophone]);
+  }, [connectionState, stopMicrophone, getAudioManager]);
+
+  // The Moshi server sends the handshake. Starting capture only after it
+  // arrives prevents initial audio from being dropped or associated with an
+  // incomplete session.
+  useEffect(() => {
+    if (connectionState === 'CONNECTED' && config.talkMode === 'continuous') {
+      void startMicrophone();
+    }
+  }, [connectionState, config.talkMode, startMicrophone]);
 
   // Handle Push-to-Talk mouse down / touch start
   const handlePushToTalkStart = () => {

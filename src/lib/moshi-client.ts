@@ -32,7 +32,7 @@ export class MoshiClient {
   private state: ConnectionState = 'DISCONNECTED';
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private reconnectAttempts = 0;
-  private handshakeSent = false;
+  private handshakeReceived = false;
 
   constructor(private options: MoshiClientOptions) {}
 
@@ -41,22 +41,15 @@ export class MoshiClient {
 
     this.setState('CONNECTING');
     this.clearTimers();
-    this.handshakeSent = false;
+    this.handshakeReceived = false;
 
     try {
       this.ws = new WebSocket(this.options.url);
       this.ws.binaryType = 'arraybuffer';
 
       this.ws.onopen = () => {
-        console.log('[MoshiClient] WebSocket connected, sending handshake');
+        console.log('[MoshiClient] WebSocket connected, waiting for server handshake');
         this.reconnectAttempts = 0;
-
-        // Send handshake: [0x00, version=0, model=0]
-        const handshake = new Uint8Array([0x00, 0, 0]);
-        this.ws!.send(handshake.buffer);
-        this.handshakeSent = true;
-
-        this.setState('CONNECTED');
       };
 
       this.ws.onmessage = (event: MessageEvent) => {
@@ -69,8 +62,10 @@ export class MoshiClient {
 
           switch (tag) {
             case 0x00:
-              // Handshake acknowledgment from server
-              console.log('[MoshiClient] Handshake acknowledged');
+              // The Moshi server initiates the session with this greeting.
+              console.log('[MoshiClient] Server handshake received');
+              this.handshakeReceived = true;
+              this.setState('CONNECTED');
               break;
 
             case 0x01:
@@ -141,7 +136,7 @@ export class MoshiClient {
    * Wraps with 0x01 audio tag prefix.
    */
   public sendAudioChunk(chunk: ArrayBuffer | Uint8Array): void {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN || !this.handshakeSent) return;
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN || !this.handshakeReceived) return;
 
     const data = chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk);
     const tagged = new Uint8Array(1 + data.byteLength);
@@ -183,7 +178,7 @@ export class MoshiClient {
       this.ws.close();
       this.ws = null;
     }
-    this.handshakeSent = false;
+    this.handshakeReceived = false;
     this.setState('DISCONNECTED');
   }
 

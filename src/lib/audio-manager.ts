@@ -13,6 +13,12 @@ export interface AudioManagerOptions {
   noiseSuppression?: boolean;
   autoGainControl?: boolean;
   onAudioChunk?: (chunk: ArrayBuffer) => void;
+  /**
+   * Returns true while speaker output must not be sent back to the model.
+   * This is a last line of defence when browser AEC cannot fully remove
+   * speaker audio (for example with external speakers or headphones).
+   */
+  shouldSuppressMicrophone?: () => boolean;
   onSpeakingStateChange?: (isSpeaking: boolean) => void;
   onError?: (error: Error) => void;
 }
@@ -22,6 +28,7 @@ export class AudioManager {
   private mediaStream: MediaStream | null = null;
   private micSourceNode: MediaStreamAudioSourceNode | null = null;
   private micAnalyserNode: AnalyserNode | null = null;
+  private silentMicGainNode: GainNode | null = null;
 
   private speakerGainNode: GainNode | null = null;
   private speakerAnalyserNode: AnalyserNode | null = null;
@@ -65,8 +72,8 @@ export class AudioManager {
       this.speakerAnalyserNode.fftSize = 256;
       this.speakerAnalyserNode.smoothingTimeConstant = 0.7;
 
-      await this.audioContext.audioWorklet.addModule('/moshi-processor.worklet.js');
-      this.workletNode = new AudioWorkletNode(this.audioContext, 'moshi-processor', {
+      await this.audioContext.audioWorklet.addModule('/sam-processor.worklet.js');
+      this.workletNode = new AudioWorkletNode(this.audioContext, 'sam-audio-processor', {
         outputChannelCount: [1],
       });
 
@@ -74,11 +81,9 @@ export class AudioManager {
       this.speakerGainNode.connect(this.speakerAnalyserNode);
       this.speakerAnalyserNode.connect(this.audioContext.destination);
 
-      // Handle playback state reporting from worklet
-      this.workletNode.port.onmessage = () => {
-        this.updateSpeakingState(true);
-        this.scheduleSilenceCheck();
-      };
+      // The worklet reports buffer activity, including silent frames. Speaking
+      // state is instead derived from decoded signal level below.
+      this.workletNode.port.onmessage = () => {};
 
       // 3. WASM Opus Decoder Worker Setup
       this.decoderWorker = new Worker('/decoderWorker.min.js');
@@ -88,6 +93,10 @@ export class AudioManager {
         const decodedBuffers = event.data as Float32Array[];
         if (decodedBuffers.length > 0 && decodedBuffers[0] && decodedBuffers[0].length > 0) {
           const pcmFrame = decodedBuffers[0];
+          if (this.isAudible(pcmFrame)) {
+            this.updateSpeakingState(true);
+            this.scheduleSilenceCheck();
+          }
           if (this.workletNode) {
             this.workletNode.port.postMessage({
               frame: pcmFrame,
@@ -153,8 +162,12 @@ export class AudioManager {
       silentGain.gain.value = 0;
       this.micAnalyserNode.connect(silentGain);
       silentGain.connect(this.audioContext.destination);
+      this.silentMicGainNode = silentGain;
 
-      // Configure opus-recorder sharing the SAME sourceNode & AudioContext
+      // Follow Moshi's reference client: let opus-recorder own the capture
+      // source used for encoding. Passing our analyser source node here can
+      // prevent the recorder worklet from producing a decodable Ogg stream in
+      // Chrome. The separate source above remains only for visualization.
       const sampleRate = this.audioContext.sampleRate;
       const bufferLength = Math.round(960 * sampleRate / 24000);
 
@@ -171,19 +184,22 @@ export class AudioManager {
         encoderComplexity: 0,
         encoderApplication: 2049,
         streamPages: true,
-        sourceNode: this.micSourceNode,
       };
 
       this.recorder = new Recorder(recorderConfig);
 
       this.recorder.ondataavailable = (data: ArrayBuffer) => {
-        if (this.isRecording && this.options.onAudioChunk) {
+        if (
+          this.isRecording &&
+          !this.options.shouldSuppressMicrophone?.() &&
+          this.options.onAudioChunk
+        ) {
           this.options.onAudioChunk(data);
         }
       };
 
-      await this.recorder.start();
       this.isRecording = true;
+      await this.recorder.start();
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
       this.stopMicrophone();
@@ -216,6 +232,11 @@ export class AudioManager {
     if (this.micAnalyserNode) {
       this.micAnalyserNode.disconnect();
       this.micAnalyserNode = null;
+    }
+
+    if (this.silentMicGainNode) {
+      this.silentMicGainNode.disconnect();
+      this.silentMicGainNode = null;
     }
 
     if (this.mediaStream) {
@@ -266,6 +287,11 @@ export class AudioManager {
   public stop(): void {
     this.stopMicrophone();
 
+    if (this.silenceCheckTimer) {
+      clearTimeout(this.silenceCheckTimer);
+      this.silenceCheckTimer = null;
+    }
+
     if (this.decoderWorker) {
       this.decoderWorker.postMessage({ command: 'done' });
       this.decoderWorker.terminate();
@@ -303,6 +329,20 @@ export class AudioManager {
     this.silenceCheckTimer = setTimeout(() => {
       this.updateSpeakingState(false);
     }, 500);
+  }
+
+  /**
+   * Moshi sends audio packets continuously, including silence. Only gate the
+   * microphone for audible output; otherwise a silent stream blocks every
+   * later user turn.
+   */
+  private isAudible(frame: Float32Array): boolean {
+    let energy = 0;
+    for (let index = 0; index < frame.length; index++) {
+      energy += frame[index] * frame[index];
+    }
+    const rms = Math.sqrt(energy / frame.length);
+    return rms >= 0.003;
   }
 
   private updateSpeakingState(speaking: boolean): void {
