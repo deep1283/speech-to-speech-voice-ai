@@ -236,7 +236,7 @@ function MoshiVoiceClientInner() {
           </div>
           <div>
             <h1 className="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-neutral-200 to-indigo-300 bg-clip-text text-transparent">
-              Moshi AI Speech
+              Sam AI Speech
             </h1>
             <p className="text-xs text-neutral-400 flex items-center gap-1.5">
               <span>Native Speech-to-Speech</span>
@@ -306,7 +306,7 @@ function MoshiVoiceClientInner() {
               : 'bg-neutral-900/50 border-neutral-800 text-neutral-500'
           }`}>
             <Sparkles className="w-3.5 h-3.5" />
-            <span>{isAISpeaking ? 'Moshi Speaking...' : 'AI Idle'}</span>
+            <span>{isAISpeaking ? 'Sam Speaking...' : 'AI Idle'}</span>
           </div>
         </div>
 
@@ -325,7 +325,7 @@ function MoshiVoiceClientInner() {
           <div className="w-full max-w-lg mx-auto p-4 rounded-2xl bg-neutral-900/60 border border-neutral-800 backdrop-blur-sm">
             <div className="flex items-center gap-2 mb-2">
               <Sparkles className="w-4 h-4 text-purple-400" />
-              <span className="text-xs text-neutral-400 font-medium uppercase tracking-wider">Moshi says</span>
+              <span className="text-xs text-neutral-400 font-medium uppercase tracking-wider">Sam says</span>
             </div>
             <p className="text-sm text-neutral-200 leading-relaxed">{aiText}</p>
           </div>
@@ -420,7 +420,7 @@ function MoshiVoiceClientInner() {
                 }`}
               >
                 {isSpeakerMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
-                <span>{isSpeakerMuted ? 'Moshi Muted' : 'Mute Speaker'}</span>
+                <span>{isSpeakerMuted ? 'Sam Muted' : 'Mute Speaker'}</span>
               </button>
             </div>
           )}
@@ -466,7 +466,7 @@ export default function MoshiVoiceClient() {
       <main className="min-h-screen bg-neutral-950 text-neutral-100 flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
           <Radio className="w-10 h-10 text-indigo-400 animate-pulse" />
-          <p className="text-neutral-400 text-sm">Loading Moshi Voice Client...</p>
+          <p className="text-neutral-400 text-sm">Loading Sam Voice Client...</p>
         </div>
       </main>
     );

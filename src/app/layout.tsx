@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Moshi AI Voice | Ultra Low-Latency Speech Client",
-  description: "Custom ultra low-latency WebAudio client for Kyutai Moshi native speech-to-speech AI model",
+  title: "Sam AI Voice",
+  description: "Sam is a real-time speech-to-speech AI assistant.",
 };
 
 export default function RootLayout({

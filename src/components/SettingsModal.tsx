@@ -48,7 +48,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         <div className="flex items-center justify-between pb-4 border-b border-neutral-800">
           <div className="flex items-center space-x-2">
             <Sliders className="w-5 h-5 text-indigo-400" />
-            <h2 className="text-xl font-semibold tracking-wide">Moshi Client Settings</h2>
+            <h2 className="text-xl font-semibold tracking-wide">Sam Settings</h2>
           </div>
           <button
             onClick={onClose}
@@ -71,12 +71,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               type="text"
               value={formConfig.wsUrl}
               onChange={(e) => setFormConfig({ ...formConfig, wsUrl: e.target.value })}
-              placeholder="ws://localhost:8998/api/chat"
+              placeholder="ws://127.0.0.1:8998/api/chat"
               className="w-full px-4 py-2.5 rounded-xl bg-neutral-950 border border-neutral-800 text-neutral-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
               required
             />
             <p className="text-xs text-neutral-500">
-              Moshi Rust server WebSocket endpoint (e.g. ws://localhost:8998 or wss://your-cloud-gpu.com:8998).
+              Sam speech backend endpoint (e.g. ws://127.0.0.1:8998 or wss://your-cloud-gpu.com:8998).
             </p>
           </div>
 
@@ -89,7 +89,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 onChange={(e) => setFormConfig({ ...formConfig, sampleRate: Number(e.target.value) })}
                 className="w-full px-3 py-2.5 rounded-xl bg-neutral-950 border border-neutral-800 text-neutral-200 focus:outline-none focus:border-indigo-500"
               >
-                <option value={24000}>24,000 Hz (Moshi Native)</option>
+                <option value={24000}>24,000 Hz (Sam Native)</option>
                 <option value={16000}>16,000 Hz (Standard Speech)</option>
                 <option value={48000}>48,000 Hz (High Quality)</option>
               </select>
