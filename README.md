@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Speech-to-Speech Voice AI
 
-## Getting Started
+A browser-based interface for real-time speech-to-speech conversations with a compatible WebSocket backend. The client captures microphone audio, streams encoded audio to the server, plays streamed audio responses, and renders live audio activity in the browser.
 
-First, run the development server:
+## Highlights
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Real-time, bidirectional audio streaming over WebSockets
+- Browser microphone capture with echo cancellation, noise suppression, and automatic gain control
+- Continuous and push-to-talk interaction modes
+- Configurable backend endpoint and audio settings
+- Web Audio-based playback and microphone/speaker visualisation
+- Text events alongside streamed audio responses
+
+## Architecture
+
+```text
+Browser microphone
+  → AudioManager / recorder
+  → MoshiClient WebSocket protocol
+  → compatible speech-to-speech backend
+  → streamed audio + text events
+  → browser playback + visualiser
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The client expects a backend that implements the tagged Moshi-style WebSocket protocol used by `src/lib/moshi-client.ts`:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `0x00`: session handshake
+- `0x01`: audio payload
+- `0x02`: UTF-8 text payload
+- `0x03`: session control message
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Stack
 
-## Learn More
+- TypeScript and React 19
+- Next.js 16
+- Web Audio API
+- WebSockets
+- Tailwind CSS
 
-To learn more about Next.js, take a look at the following resources:
+## Run locally
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm install
+npm run dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Open `http://localhost:3000`, open **Settings**, and set the WebSocket backend URL. The development default is `ws://127.0.0.1:8998/api/chat`.
 
-## Deploy on Vercel
+## Quality checks
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm run lint
+npm run build
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Notes
+
+- The browser will request microphone access when a conversation begins.
+- A running compatible speech backend is required; this repository provides the web client, not the model-serving runtime.
